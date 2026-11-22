@@ -1,6 +1,9 @@
+import logging
 import os
 
 import httpx
+
+log = logging.getLogger("qalqan.llm")
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
@@ -14,25 +17,31 @@ class LLMUnavailable(Exception):
 def _call(url, key, model, messages):
     response = httpx.post(
         url,
-        headers={"Authorization": f"Bearer {key}"},
+        headers={"Authorization": f"Bearer {key.strip()}"},
         json={"model": model, "messages": messages, "temperature": 0.2},
         timeout=TIMEOUT,
     )
-    response.raise_for_status()
+    if response.status_code != 200:
+        raise LLMUnavailable(f"HTTP {response.status_code}: {response.text[:200]}")
     return response.json()["choices"][0]["message"]["content"].strip()
 
 
-def ask_llm(messages):
-    providers = [
-        ("groq", GROQ_URL, os.getenv("GROQ_API_KEY"), os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")),
-        ("gemini", GEMINI_URL, os.getenv("GEMINI_API_KEY"), os.getenv("GEMINI_MODEL", "gemini-2.0-flash")),
+def providers():
+    return [
+        ("groq", GROQ_URL, os.getenv("GROQ_API_KEY", ""), os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")),
+        ("gemini", GEMINI_URL, os.getenv("GEMINI_API_KEY", ""), os.getenv("GEMINI_MODEL", "gemini-2.0-flash")),
     ]
+
+
+def ask_llm(messages):
     errors = []
-    for name, url, key, model in providers:
-        if not key:
+    for name, url, key, model in providers():
+        if not key.strip():
+            errors.append(f"{name}: нет ключа")
             continue
         try:
             return _call(url, key, model, messages), f"{name}:{model}"
-        except (httpx.HTTPError, KeyError, IndexError) as exc:
+        except (LLMUnavailable, httpx.HTTPError, KeyError, IndexError) as exc:
+            log.warning("%s failed: %s", name, exc)
             errors.append(f"{name}: {exc}")
-    raise LLMUnavailable("; ".join(errors) or "no API keys configured")
+    raise LLMUnavailable("; ".join(errors))

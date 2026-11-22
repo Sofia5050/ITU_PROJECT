@@ -49,7 +49,8 @@ document.getElementById("chat-form").addEventListener("submit", async (event) =>
       body: JSON.stringify({ message, shield: document.getElementById("shield").checked }),
     });
     const data = await res.json();
-    addMessage("bot", data.answer, data.mode === "offline" ? "демо-режим без ИИ" : `модель: ${data.mode}`);
+    const meta = data.mode.startsWith("offline") ? `демо-режим без ИИ (${data.mode.slice(10)})` : `модель: ${data.mode}`;
+    addMessage("bot", data.answer, meta);
   } catch {
     addMessage("bot", "Не удалось получить ответ. Проверьте, что сервер запущен.");
   } finally {

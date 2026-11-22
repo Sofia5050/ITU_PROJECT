@@ -4,7 +4,7 @@ from .llm import LLMUnavailable, ask_llm
 
 SYSTEM_PROMPT = (
     "Ты — ИИ-ассистент мобильного приложения Demo Bank. "
-    "Отвечай клиенту кратко и дружелюбно на языке его вопроса (русский или казахский). "
+    "Отвечай клиенту кратко и дружелюбно на языке его вопроса (русский или казахский), простым текстом без markdown, таблиц и звёздочек. "
     "Используй данные клиента ниже, чтобы отвечать на вопросы о счёте и операциях."
 )
 
@@ -42,6 +42,6 @@ def answer(snapshot, question):
     messages = build_messages(snapshot, question)
     try:
         text, mode = ask_llm(messages)
-    except LLMUnavailable:
-        return offline_answer(snapshot), "offline"
+    except LLMUnavailable as exc:
+        return offline_answer(snapshot), f"offline | {exc}"
     return text, mode
