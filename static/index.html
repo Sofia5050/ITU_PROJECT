@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo Bank</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="app">
+    <div class="header">
+      <div class="logo">Demo Bank</div>
+      <label class="shield"><input type="checkbox" id="shield" disabled> Щит</label>
+    </div>
+
+    <section class="card">
+      <div class="muted" id="client">Счёт</div>
+      <div class="balance" id="balance">—</div>
+    </section>
+
+    <section class="card">
+      <div class="muted">Последние операции</div>
+      <ul class="ops" id="ops"></ul>
+    </section>
+
+    <section class="card">
+      <div class="muted">ИИ-ассистент</div>
+      <div class="chat-log" id="chat"></div>
+      <form class="row" id="chat-form">
+        <input id="question" placeholder="Например: покажи мои последние операции" autocomplete="off">
+        <button id="ask" type="submit">→</button>
+      </form>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

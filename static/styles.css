@@ -1,0 +1,39 @@
+:root {
+  --bg: #f4f6f8;
+  --card: #ffffff;
+  --text: #1c2430;
+  --muted: #6b7684;
+  --accent: #1f7a5c;
+  --danger: #c0392b;
+  --border: #e3e7ec;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+.app { max-width: 440px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.header { display: flex; justify-content: space-between; align-items: center; }
+.logo { font-weight: 700; font-size: 18px; }
+.muted { color: var(--muted); font-size: 13px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+.balance { font-size: 30px; font-weight: 700; margin-top: 4px; }
+.ops { list-style: none; margin: 0; padding: 0; }
+.ops li { padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 12px; }
+.ops li:last-child { border-bottom: none; }
+.op-title { font-weight: 600; font-size: 14px; }
+.op-comment { color: var(--muted); font-size: 12px; margin-top: 2px; word-break: break-word; }
+.amount-in { color: var(--accent); font-weight: 600; white-space: nowrap; }
+.amount-out { color: var(--text); white-space: nowrap; }
+.chat-log { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; margin-bottom: 10px; }
+.msg { padding: 10px 12px; border-radius: 12px; font-size: 14px; white-space: pre-wrap; line-height: 1.4; }
+.msg.user { background: #e7f2ee; align-self: flex-end; max-width: 85%; }
+.msg.bot { background: #f1f3f6; align-self: flex-start; max-width: 90%; }
+.msg-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.row { display: flex; gap: 8px; }
+input, textarea { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font: inherit; }
+textarea { min-height: 90px; resize: vertical; width: 100%; }
+button { padding: 10px 14px; border: none; border-radius: 10px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: default; }
+.shield { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+label { font-size: 13px; color: var(--muted); }
+.ok { color: var(--accent); font-size: 14px; }

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Перевод</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="app">
+    <div class="logo">Перевод клиенту Demo Bank</div>
+    <form class="card" id="send-form">
+      <div class="field">
+        <label for="sender">Отправитель</label>
+        <input id="sender" value="Иван П." maxlength="40" required>
+      </div>
+      <div class="field">
+        <label for="amount">Сумма, ₸</label>
+        <input id="amount" type="number" value="1" min="1" max="1000000" required>
+      </div>
+      <div class="field">
+        <label for="comment">Комментарий к переводу</label>
+        <textarea id="comment" maxlength="500"></textarea>
+      </div>
+      <button type="submit">Отправить</button>
+      <p class="ok" id="status"></p>
+    </form>
+  </main>
+  <script>
+    document.getElementById("send-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const status = document.getElementById("status");
+      status.textContent = "";
+      const res = await fetch("/api/transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender: document.getElementById("sender").value,
+          amount: Number(document.getElementById("amount").value),
+          comment: document.getElementById("comment").value,
+        }),
+      });
+      status.textContent = res.ok ? "Перевод отправлен ✓" : "Ошибка перевода";
+    });
+  </script>
+</body>
+</html>
