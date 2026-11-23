@@ -1,0 +1,9 @@
+{
+  "source": "https://www.bcc.kz/personal/deposits/ (проверено 23.11.2026)",
+  "note": "Для расчёта берётся нижняя граница ставки — консервативно. Точные ставки по срокам — в таблицах ставок на bcc.kz.",
+  "deposits": [
+    {"id": "champion", "name": "Чемпион", "rate_min": 8.70, "rate_max": 14.20, "terms": [6, 13, 24], "withdraw": true, "topup": true, "min_amount": 1000},
+    {"id": "my_goal", "name": "Моя цель", "rate_min": 15.00, "rate_max": 16.70, "terms": [3, 6, 12], "withdraw": false, "topup": true, "min_amount": 1},
+    {"id": "rakhmet", "name": "Рахмет", "rate_min": 13.10, "rate_max": 16.70, "terms": [13], "withdraw": false, "topup": false, "min_amount": 500000}
+  ]
+}

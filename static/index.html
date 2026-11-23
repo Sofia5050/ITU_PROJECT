@@ -4,23 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Demo Bank</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/styles.css?v=3">
 </head>
 <body>
   <main class="app">
     <div class="header">
       <div class="logo">Demo Bank</div>
-      <label class="shield"><input type="checkbox" id="shield" disabled> Щит</label>
+      <label class="shield" id="shield-label"><input type="checkbox" id="shield"> Щит Qalqan</label>
     </div>
 
     <section class="card">
-      <div class="muted" id="client">Счёт</div>
+      <div class="muted" id="client">Карта</div>
       <div class="balance" id="balance">—</div>
+      <div class="deposits" id="deposits"></div>
     </section>
 
     <section class="card">
-      <div class="muted">Последние операции</div>
-      <ul class="ops" id="ops"></ul>
+      <div class="muted">ИИ-консультант по сбережениям</div>
+      <form id="advise-form">
+        <textarea id="advise-request" placeholder="Например: у меня 1 000 000 ₸, через 3 месяца нужно 300 000 на ремонт, ещё 100 000 хочу держать под рукой"></textarea>
+        <button id="advise-btn" type="submit">Составить план</button>
+      </form>
+      <div id="plan"></div>
     </section>
 
     <section class="card">
@@ -31,7 +36,18 @@
         <button id="ask" type="submit">→</button>
       </form>
     </section>
+
+    <section class="card">
+      <div class="muted">Последние операции</div>
+      <ul class="ops" id="ops"></ul>
+    </section>
+
+    <section class="card shield-log" id="incidents-card" hidden>
+      <div class="muted">Журнал щита</div>
+      <ul class="ops" id="incidents"></ul>
+    </section>
+    <button class="reset" id="reset" type="button">Сбросить демо</button>
   </main>
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=3"></script>
 </body>
 </html>

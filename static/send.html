@@ -40,7 +40,8 @@
           comment: document.getElementById("comment").value,
         }),
       });
-      status.textContent = res.ok ? "Перевод отправлен ✓" : "Ошибка перевода";
+      const data = await res.json().catch(() => ({}));
+      status.textContent = data.ok ? "Перевод отправлен ✓" : (data.error || "Ошибка перевода");
     });
   </script>
 </body>

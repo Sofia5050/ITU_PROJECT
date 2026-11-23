@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 load_dotenv()
 
+from . import advisor  # noqa: E402
 from .assistant import answer  # noqa: E402
 from .store import Store  # noqa: E402
 
@@ -28,6 +29,16 @@ class ChatIn(BaseModel):
     shield: bool = False
 
 
+class AdviseIn(BaseModel):
+    request: str = Field(min_length=1, max_length=600)
+    shield: bool = False
+
+
+class ExecuteIn(BaseModel):
+    actions: list[dict] = Field(max_length=20)
+    shield: bool = False
+
+
 @app.get("/api/health")
 def health():
     return {"ok": True}
@@ -41,13 +52,25 @@ def account():
 @app.post("/api/transfer")
 def transfer(data: TransferIn):
     tx = store.add_incoming(data.sender.strip(), data.amount, data.comment.strip())
+    if tx is None:
+        return {"ok": False, "error": "Отправитель заблокирован банком"}
     return {"ok": True, "transaction": tx}
 
 
 @app.post("/api/chat")
 def chat(data: ChatIn):
-    text, mode = answer(store.snapshot(), data.message.strip())
-    return {"answer": text, "mode": mode, "shield": False}
+    text, mode, blocked = answer(store.snapshot(), data.message.strip(), store, data.shield)
+    return {"answer": text, "mode": mode, "shield": data.shield, "blocked": blocked}
+
+
+@app.post("/api/advise")
+def advise(data: AdviseIn):
+    return advisor.propose(store.snapshot(), data.request.strip(), store, data.shield)
+
+
+@app.post("/api/execute")
+def execute(data: ExecuteIn):
+    return {"done": advisor.execute(data.actions, store, data.shield)}
 
 
 @app.post("/api/reset")

@@ -14,13 +14,13 @@ class LLMUnavailable(Exception):
     pass
 
 
-def _call(url, key, model, messages):
-    response = httpx.post(
-        url,
-        headers={"Authorization": f"Bearer {key.strip()}"},
-        json={"model": model, "messages": messages, "temperature": 0.2},
-        timeout=TIMEOUT,
-    )
+def _call(url, key, model, messages, json_mode):
+    body = {"model": model, "messages": messages, "temperature": 0.2}
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
+    response = httpx.post(url, headers={"Authorization": f"Bearer {key.strip()}"}, json=body, timeout=TIMEOUT)
+    if response.status_code == 400 and json_mode:
+        return _call(url, key, model, messages, False)
     if response.status_code != 200:
         raise LLMUnavailable(f"HTTP {response.status_code}: {response.text[:200]}")
     return response.json()["choices"][0]["message"]["content"].strip()
@@ -33,14 +33,14 @@ def providers():
     ]
 
 
-def ask_llm(messages):
+def ask_llm(messages, json_mode=False):
     errors = []
     for name, url, key, model in providers():
         if not key.strip():
             errors.append(f"{name}: нет ключа")
             continue
         try:
-            return _call(url, key, model, messages), f"{name}:{model}"
+            return _call(url, key, model, messages, json_mode), f"{name}:{model}"
         except (LLMUnavailable, httpx.HTTPError, KeyError, IndexError) as exc:
             log.warning("%s failed: %s", name, exc)
             errors.append(f"{name}: {exc}")
