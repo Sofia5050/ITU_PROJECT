@@ -4,11 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Перевод</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/styles.css?v=4">
 </head>
 <body>
   <main class="app">
     <div class="logo">Перевод клиенту Demo Bank</div>
+    <section class="card">
+      <div class="muted">Готовые атаки (для демо)</div>
+      <div class="scenarios" id="attacks"></div>
+    </section>
     <form class="card" id="send-form">
       <div class="field">
         <label for="sender">Отправитель</label>
@@ -20,17 +24,34 @@
       </div>
       <div class="field">
         <label for="comment">Комментарий к переводу</label>
-        <textarea id="comment" maxlength="500"></textarea>
+        <textarea id="comment" maxlength="600"></textarea>
       </div>
       <button type="submit">Отправить</button>
-      <p class="ok" id="status"></p>
+      <p class="status" id="status"></p>
     </form>
   </main>
   <script>
+    const status = document.getElementById("status");
+    function show(data) {
+      status.className = "status " + (data.ok ? "ok" : "warn");
+      status.textContent = data.ok ? "Перевод отправлен ✓" : (data.error || "Ошибка перевода");
+    }
+    fetch("/api/presets").then((r) => r.json()).then((data) => {
+      const box = document.getElementById("attacks");
+      for (const [key, title] of Object.entries(data.attacks)) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "scenario";
+        b.textContent = title;
+        b.addEventListener("click", async () => {
+          const res = await fetch(`/api/attack/${key}`, { method: "POST" });
+          show(await res.json());
+        });
+        box.append(b);
+      }
+    });
     document.getElementById("send-form").addEventListener("submit", async (event) => {
       event.preventDefault();
-      const status = document.getElementById("status");
-      status.textContent = "";
       const res = await fetch("/api/transfer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -40,8 +61,7 @@
           comment: document.getElementById("comment").value,
         }),
       });
-      const data = await res.json().catch(() => ({}));
-      status.textContent = data.ok ? "Перевод отправлен ✓" : (data.error || "Ошибка перевода");
+      show(await res.json());
     });
   </script>
 </body>

@@ -2,7 +2,7 @@ import time
 import uuid
 from threading import Lock
 
-INITIAL_BALANCE = 1_250_000
+INITIAL_BALANCE = 2_500_000
 
 INITIAL_TRANSACTIONS = [
     {"sender": "ТОО «Альфа Сервис»", "amount": 320_000, "comment": "Заработная плата за октябрь", "direction": "in"},

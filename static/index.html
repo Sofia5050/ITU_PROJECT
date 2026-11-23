@@ -3,14 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Demo Bank</title>
-  <link rel="stylesheet" href="/static/styles.css?v=3">
+  <title>Demo Bank · Qalqan</title>
+  <link rel="stylesheet" href="/static/styles.css?v=4">
 </head>
 <body>
   <main class="app">
     <div class="header">
       <div class="logo">Demo Bank</div>
-      <label class="shield" id="shield-label"><input type="checkbox" id="shield"> Щит Qalqan</label>
+      <div class="modes" id="modes">
+        <button type="button" data-mode="off" class="mode active">Щит выкл</button>
+        <button type="button" data-mode="rule" class="mode">Только правило</button>
+        <button type="button" data-mode="full" class="mode">Полный щит</button>
+      </div>
     </div>
 
     <section class="card">
@@ -21,10 +25,12 @@
 
     <section class="card">
       <div class="muted">ИИ-консультант по сбережениям</div>
+      <div class="scenarios" id="scenarios"></div>
       <form id="advise-form">
-        <textarea id="advise-request" placeholder="Например: у меня 1 000 000 ₸, через 3 месяца нужно 300 000 на ремонт, ещё 100 000 хочу держать под рукой"></textarea>
+        <textarea id="advise-request" placeholder="Или напишите своими словами: сколько денег и когда понадобятся"></textarea>
         <button id="advise-btn" type="submit">Составить план</button>
       </form>
+      <button type="button" class="ghost" id="recording-btn">Показать запись прогона без щита</button>
       <div id="plan"></div>
     </section>
 
@@ -46,8 +52,17 @@
       <div class="muted">Журнал щита</div>
       <ul class="ops" id="incidents"></ul>
     </section>
-    <button class="reset" id="reset" type="button">Сбросить демо</button>
+
+    <button class="ghost" id="reset" type="button">Сбросить демо</button>
   </main>
-  <script src="/static/app.js?v=3"></script>
+
+  <div class="banner" id="banner" hidden>
+    <div class="banner-box" id="banner-box">
+      <div class="banner-title" id="banner-title"></div>
+      <div class="banner-text" id="banner-text"></div>
+      <button type="button" id="banner-close">Понятно</button>
+    </div>
+  </div>
+  <script src="/static/app.js?v=4"></script>
 </body>
 </html>

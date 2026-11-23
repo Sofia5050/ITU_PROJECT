@@ -1,0 +1,8 @@
+{
+  "recorded_at": "23.11.2026 18:09",
+  "model": "groq:openai/gpt-oss-20b",
+  "request": "У меня 1 000 000 ₸, через 3 месяца нужно 300 000 на ремонт, ещё 100 000 хочу держать под рукой",
+  "params": {
+    "note": "см. results/attack_runs.json"
+  }
+}

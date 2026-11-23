@@ -1,5 +1,8 @@
 const fmt = (n) => Math.round(n).toLocaleString("ru-RU") + " ₸";
-const shieldOn = () => document.getElementById("shield").checked;
+let mode = "off";
+let proposedActions = [];
+
+const SCENARIO_LABELS = { repair: "Ремонт", car: "Машина", wedding: "Свадьба" };
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -9,13 +12,20 @@ function el(tag, className, text) {
 }
 
 async function post(url, body) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   return res.json();
 }
+
+function showBanner(kind, title, text) {
+  document.getElementById("banner-box").className = `banner-box ${kind}`;
+  document.getElementById("banner-title").textContent = title;
+  document.getElementById("banner-text").textContent = text;
+  document.getElementById("banner").hidden = false;
+}
+
+document.getElementById("banner-close").addEventListener("click", () => {
+  document.getElementById("banner").hidden = true;
+});
 
 async function loadAccount() {
   const data = await (await fetch("/api/account")).json();
@@ -48,46 +58,15 @@ async function loadAccount() {
     const li = el("li");
     const left = el("div");
     left.append(el("div", "op-title", i.kind));
-    left.append(el("div", "op-comment", i.detail + (i.sender ? ` · отправитель «${i.sender}» заблокирован` : "")));
+    left.append(el("div", "op-comment", i.detail + (i.sender ? ` · отправитель «${i.sender}» передан на проверку антифроду` : "")));
     li.append(left);
     list.append(li);
   }
 }
 
-function addMessage(role, text, meta) {
-  const log = document.getElementById("chat");
-  const msg = el("div", `msg ${role}`, text);
-  if (meta) msg.append(el("div", "msg-meta", meta));
-  log.append(msg);
-  log.scrollTop = log.scrollHeight;
+function modeLabel(m) {
+  return m.startsWith("offline") ? `демо-режим без ИИ (${m.slice(10)})` : m;
 }
-
-function modeLabel(mode) {
-  return mode.startsWith("offline") ? `демо-режим без ИИ (${mode.slice(10)})` : `модель: ${mode}`;
-}
-
-document.getElementById("chat-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const input = document.getElementById("question");
-  const button = document.getElementById("ask");
-  const message = input.value.trim();
-  if (!message) return;
-  addMessage("user", message);
-  input.value = "";
-  button.disabled = true;
-  try {
-    const data = await post("/api/chat", { message, shield: shieldOn() });
-    const extra = data.blocked && data.blocked.length ? ` · щит остановил: ${data.blocked.join(", ")}` : "";
-    addMessage("bot", data.answer, modeLabel(data.mode) + extra);
-  } catch {
-    addMessage("bot", "Не удалось получить ответ. Проверьте, что сервер запущен.");
-  } finally {
-    button.disabled = false;
-    loadAccount();
-  }
-});
-
-let proposedActions = [];
 
 function renderPlan(data) {
   const box = document.getElementById("plan");
@@ -97,6 +76,7 @@ function renderPlan(data) {
     return;
   }
   const p = data.plan;
+  if (data.recorded) box.append(el("div", "recorded", `Запись реального прогона · запрос: «${data.request}»`));
   if (data.message) box.append(el("p", "plan-msg", data.message));
   const list = el("ul", "ops");
   for (const i of p.items) {
@@ -107,51 +87,113 @@ function renderPlan(data) {
     li.append(left, el("div", "amount-out", fmt(i.amount)));
     list.append(li);
   }
+  for (const a of data.actions.filter((x) => x.type !== "open_deposit")) {
+    const li = el("li", "extra-line");
+    const left = el("div");
+    left.append(el("div", "op-title", a.reason || "Перевод"));
+    left.append(el("div", "op-comment", a.to));
+    li.append(left, el("div", "amount-out", fmt(a.amount)));
+    list.append(li);
+  }
   box.append(list);
-  box.append(el("div", "gain", `Доход: ${fmt(p.income)} · это на ${fmt(p.gain_vs_flexible)} больше, чем держать всё на гибком вкладе, и на ${fmt(p.income)} больше, чем на карте`));
+  box.append(el("div", "gain", `Доход за год: ${fmt(p.income)} — на ${fmt(p.gain_vs_flexible)} больше, чем на гибком вкладе`));
 
-  const extra = data.actions.filter((a) => a.type !== "open_deposit");
-  for (const a of extra) {
-    box.append(el("div", "action-extra", `Также: перевод ${fmt(a.amount)} на ${a.to} — ${a.reason}`));
-  }
   for (const c of data.caught || []) {
-    box.append(el("div", "action-blocked", `Щит нашёл подброшенную команду в переводе от «${c}», не дал ИИ её выполнить и заблокировал отправителя`));
+    box.append(el("div", "action-blocked", `Щит нашёл подброшенную команду в переводе от «${c}» и не показал её ИИ. Отправитель передан на проверку антифроду.`));
   }
-  for (const b of data.blocked) {
-    box.append(el("div", "action-blocked", `Щит заблокировал: перевод ${fmt(b.amount || 0)} на ${b.to || "?"} — ${b.blocked_reason}`));
+  for (const b of data.blocked || []) {
+    box.append(el("div", "action-blocked", `ИИ обманули, но правило остановило перевод ${fmt(b.amount || 0)} → ${b.to || "?"}: ${b.blocked_reason}`));
   }
 
   proposedActions = data.actions;
   const btn = el("button", "", "Открыть депозиты");
   btn.addEventListener("click", async () => {
     btn.disabled = true;
-    const res = await post("/api/execute", { actions: proposedActions, shield: shieldOn() });
-    box.append(el("p", "ok", res.done.length ? "Готово: " + res.done.join("; ") : "Ничего не выполнено"));
-    loadAccount();
+    const res = await post("/api/execute", { actions: proposedActions, mode });
+    await loadAccount();
+    if (res.lost > 0) {
+      showBanner("bad", `−${fmt(res.lost)} ушли мошеннику`, "ИИ-консультант выполнил команду из перевода на 1 тенге. Клиент нажал одну кнопку — и не заметил лишнюю строку в плане.");
+    } else if (data.ai_fooled || res.stopped > 0) {
+      showBanner("good", "Деньги на месте", "ИИ пытались обмануть, но деньги двигаются только между счетами самого клиента. Мошенник не получил ничего.");
+    } else {
+      showBanner("good", "Депозиты открыты", res.done.join(" · "));
+    }
   });
   box.append(btn);
   box.append(el("div", "msg-meta", `${modeLabel(data.mode)} · ставки: ${p.source}`));
 }
 
-document.getElementById("advise-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const request = document.getElementById("advise-request").value.trim();
-  if (!request) return;
+async function advise(request) {
   const button = document.getElementById("advise-btn");
   button.disabled = true;
   document.getElementById("plan").replaceChildren(el("p", "muted", "Считаю план…"));
   try {
-    renderPlan(await post("/api/advise", { request, shield: shieldOn() }));
+    renderPlan(await post("/api/advise", { request, mode }));
   } catch {
     renderPlan({ error: "Не удалось получить ответ. Проверьте, что сервер запущен." });
   } finally {
     button.disabled = false;
     loadAccount();
   }
+}
+
+document.getElementById("advise-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const request = document.getElementById("advise-request").value.trim();
+  if (request) advise(request);
 });
 
-document.getElementById("shield").addEventListener("change", () => {
-  document.getElementById("shield-label").classList.toggle("on", shieldOn());
+document.getElementById("recording-btn").addEventListener("click", async () => {
+  const res = await fetch("/api/recording");
+  const data = await res.json();
+  renderPlan(res.ok ? data : { error: data.error });
+});
+
+async function loadPresets() {
+  const data = await (await fetch("/api/presets")).json();
+  const box = document.getElementById("scenarios");
+  for (const [key, text] of Object.entries(data.scenarios)) {
+    const b = el("button", "scenario", SCENARIO_LABELS[key] || key);
+    b.type = "button";
+    b.addEventListener("click", () => {
+      document.getElementById("advise-request").value = text;
+      advise(text);
+    });
+    box.append(b);
+  }
+}
+
+for (const b of document.querySelectorAll(".mode")) {
+  b.addEventListener("click", () => {
+    mode = b.dataset.mode;
+    document.querySelectorAll(".mode").forEach((x) => x.classList.toggle("active", x === b));
+    document.body.dataset.mode = mode;
+  });
+}
+
+function addMessage(role, text, meta) {
+  const log = document.getElementById("chat");
+  const msg = el("div", `msg ${role}`, text);
+  if (meta) msg.append(el("div", "msg-meta", meta));
+  log.append(msg);
+  log.scrollTop = log.scrollHeight;
+}
+
+document.getElementById("chat-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = document.getElementById("question");
+  const message = input.value.trim();
+  if (!message) return;
+  addMessage("user", message);
+  input.value = "";
+  try {
+    const data = await post("/api/chat", { message, mode });
+    const extra = data.blocked && data.blocked.length ? ` · щит остановил: ${data.blocked.join(", ")}` : "";
+    addMessage("bot", data.answer, modeLabel(data.mode) + extra);
+  } catch {
+    addMessage("bot", "Не удалось получить ответ. Проверьте, что сервер запущен.");
+  }
+  loadAccount();
 });
 
 document.getElementById("reset").addEventListener("click", async () => {
@@ -161,5 +203,7 @@ document.getElementById("reset").addEventListener("click", async () => {
   loadAccount();
 });
 
+document.body.dataset.mode = mode;
+loadPresets();
 loadAccount();
-setInterval(loadAccount, 3000);
+setInterval(loadAccount, 2000);
