@@ -72,3 +72,7 @@ body[data-mode="rule"] .mode.active, body[data-mode="full"] .mode.active { color
 .banner-box.bad .banner-title { color: var(--danger); }
 .banner-box.good .banner-title { color: var(--accent); }
 .banner-text { font-size: 16px; line-height: 1.45; }
+
+/* Режим записи видео: ?clean=1 прячет служебные элементы (переключатель щита, запись, сброс, журнал).
+   Клавиша ` (буква Ё) переключает режим во время записи. */
+body.clean #modes, body.clean #recording-btn, body.clean #reset, body.clean #incidents-card { display: none !important; }

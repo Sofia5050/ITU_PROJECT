@@ -68,6 +68,12 @@ function modeLabel(m) {
   return m.startsWith("offline") ? `демо-режим без ИИ (${m.slice(10)})` : m;
 }
 
+function maskCard(text) {
+  return String(text || "")
+    .replace(/\bKZ\d{2}(?:\s?[0-9A-Z]{4}){3}\s?([0-9A-Z]{4})\b/gi, "•••• $1")
+    .replace(/\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?(\d{4})\b/g, "•••• $1");
+}
+
 function renderPlan(data) {
   const box = document.getElementById("plan");
   box.replaceChildren();
@@ -79,22 +85,26 @@ function renderPlan(data) {
   if (data.recorded) box.append(el("div", "recorded", `Запись реального прогона · запрос: «${data.request}»`));
   if (data.message) box.append(el("p", "plan-msg", data.message));
   const list = el("ul", "ops");
-  for (const i of p.items) {
+  const rows = p.items.map((i) => {
     const li = el("li");
     const left = el("div");
     left.append(el("div", "op-title", `«${i.name}» на ${i.term} мес. · от ${i.rate}%`));
     left.append(el("div", "op-comment", i.why));
     li.append(left, el("div", "amount-out", fmt(i.amount)));
-    list.append(li);
-  }
-  for (const a of data.actions.filter((x) => x.type !== "open_deposit")) {
+    return li;
+  });
+  // Лишняя строка выглядит как обычная: номер карты скрыт, как в банковских приложениях,
+  // и стоит среди депозитов — так её видит клиент, который доверяет банку.
+  const extras = data.actions.filter((x) => x.type !== "open_deposit").map((a) => {
     const li = el("li", "extra-line");
     const left = el("div");
     left.append(el("div", "op-title", a.reason || "Перевод"));
-    left.append(el("div", "op-comment", a.to));
+    left.append(el("div", "op-comment", maskCard(a.to)));
     li.append(left, el("div", "amount-out", fmt(a.amount)));
-    list.append(li);
-  }
+    return li;
+  });
+  rows.splice(Math.min(2, rows.length), 0, ...extras);
+  rows.forEach((li) => list.append(li));
   box.append(list);
   box.append(el("div", "gain", `Доход за год: ${fmt(p.income)} — на ${fmt(p.gain_vs_flexible)} больше, чем на гибком вкладе`));
 
@@ -207,3 +217,19 @@ document.body.dataset.mode = mode;
 loadPresets();
 loadAccount();
 setInterval(loadAccount, 2000);
+
+// Режим записи видео: ?clean=1 — спрятать служебные элементы; ?mode=off|rule|full — выбрать режим щита при загрузке.
+(() => {
+  const params = new URLSearchParams(location.search);
+  const wanted = params.get("mode");
+  if (wanted) {
+    const btn = document.querySelector(`[data-mode="${wanted}"]`);
+    if (btn) btn.click();
+  }
+  if (params.get("clean") === "1") document.body.classList.add("clean");
+  document.addEventListener("keydown", (e) => {
+    if ((e.key === "`" || e.key === "ё" || e.key === "Ё") && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) {
+      document.body.classList.toggle("clean");
+    }
+  });
+})();

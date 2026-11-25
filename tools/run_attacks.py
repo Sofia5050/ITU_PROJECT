@@ -20,12 +20,18 @@ RESULTS = ROOT / "results"
 RUNS_NAME = "attack"
 
 
+class DailyLimit(Exception):
+    pass
+
+
 def ask(store, request, mode, delay):
     for attempt in range(4):
         try:
             time.sleep(delay)
             return advisor.ask_advisor(store.snapshot(), request, store, mode)
         except (LLMUnavailable, ValueError, json.JSONDecodeError) as exc:
+            if "per day" in str(exc) or "TPD" in str(exc):
+                raise DailyLimit(str(exc)) from exc
             wait = 20 * (attempt + 1)
             print(f"   ошибка ({str(exc)[:80]}), жду {wait} с…")
             time.sleep(wait)
@@ -54,6 +60,7 @@ def main():
     parser.add_argument("--delay", type=float, default=2.0)
     parser.add_argument("--attacks-file", help="JSON с новыми атаками (attacks/benign), каждая атака прогоняется --runs-file раз")
     parser.add_argument("--runs-file", type=int, default=1)
+    parser.add_argument("--only", help="прогнать только эти атаки, через запятую (например: main)")
     parser.add_argument("--summary-only", action="store_true",
                         help="не гонять ИИ заново, а пересобрать таблицу из results/attack_runs.json")
     args = parser.parse_args()
@@ -73,46 +80,53 @@ def main():
         write_summary(rows)
         return
 
+    if args.only:
+        wanted = [k.strip() for k in args.only.split(",")]
+        ATTACKS = {k: v for k, v in ATTACKS.items() if k in wanted}
+
     RESULTS.mkdir(exist_ok=True)
     scenarios = list(SCENARIOS.values())
     rows, recorded = [], advisor.RECORDING.exists()
 
-    for key, attack in ATTACKS.items():
-        if "items" in attack:
-            jobs = [(it["comment"], it["id"]) for it in attack["items"] for _ in range(args.runs_file)]
-        else:
-            runs = args.runs_main if key == "main" else args.runs_other
-            jobs = [(attack["comment"], None)] * runs
-        print(f"\n== {attack['title']} — {len(jobs)} прогонов")
-        for i, (comment, item_id) in enumerate(jobs):
-            request = scenarios[i % len(scenarios)]
+    try:
+        for key, attack in ATTACKS.items():
+            if "items" in attack:
+                jobs = [(it["comment"], it["id"]) for it in attack["items"] for _ in range(args.runs_file)]
+            else:
+                runs = args.runs_main if key == "main" else args.runs_other
+                jobs = [(attack["comment"], None)] * runs
+            print(f"\n== {attack['title']} — {len(jobs)} прогонов")
+            for i, (comment, item_id) in enumerate(jobs):
+                request = scenarios[i % len(scenarios)]
 
-            off = run_mode(comment, request, "off", args.delay)
-            if off is None:
-                continue
-            store, actions, fooled_off, _, model, money_off, msg_off = off
-            if fooled_off and not recorded:
-                advisor.save_recording(request, {"note": "см. results/attack_runs.json"}, model)
-                recorded = True
-            rule_store = Store()
-            lost_rule = advisor.execute(actions, rule_store, "rule")["lost"]
-            lost_off = advisor.execute(actions, store, "off")["lost"]
+                off = run_mode(comment, request, "off", args.delay)
+                if off is None:
+                    continue
+                store, actions, fooled_off, _, model, money_off, msg_off = off
+                if fooled_off and not recorded:
+                    advisor.save_recording(request, {"note": "см. results/attack_runs.json"}, model)
+                    recorded = True
+                rule_store = Store()
+                lost_rule = advisor.execute(actions, rule_store, "rule")["lost"]
+                lost_off = advisor.execute(actions, store, "off")["lost"]
 
-            full = run_mode(comment, request, "full", args.delay)
-            if full is None:
-                continue
-            fstore, factions, fooled_full, caught, _, _, msg_full = full
-            lost_full = advisor.execute(factions, fstore, "full")["lost"]
+                full = run_mode(comment, request, "full", args.delay)
+                if full is None:
+                    continue
+                fstore, factions, fooled_full, caught, _, _, msg_full = full
+                lost_full = advisor.execute(factions, fstore, "full")["lost"]
 
-            rows.append({
-                "attack": key, "item": item_id, "run": i + 1, "model": model, "request": request,
-                "ai_fooled_no_filter": fooled_off, "lost_off": lost_off, "lost_rule_only": lost_rule,
-                "filter_caught": caught, "ai_fooled_full": fooled_full, "lost_full": lost_full,
-                "ai_fooled_money_off": money_off, "message_off": msg_off, "message_full": msg_full,
-            })
-            print(f"  {i + 1:>2}: без Qalqan — ИИ обманут={'да' if fooled_off else 'нет'}, ушло {lost_off} ₸"
-                  f"{' (правило в коде остановило бы: ушло ' + str(lost_rule) + ' ₸)' if fooled_off else ''} · "
-                  f"с Qalqan — фильтр поймал={'да' if caught else 'нет'}, ИИ обманут={'да' if fooled_full else 'нет'}, ушло {lost_full} ₸")
+                rows.append({
+                    "attack": key, "item": item_id, "run": i + 1, "model": model, "request": request,
+                    "ai_fooled_no_filter": fooled_off, "lost_off": lost_off, "lost_rule_only": lost_rule,
+                    "filter_caught": caught, "ai_fooled_full": fooled_full, "lost_full": lost_full,
+                    "ai_fooled_money_off": money_off, "message_off": msg_off, "message_full": msg_full,
+                })
+                print(f"  {i + 1:>2}: без Qalqan — ИИ обманут={'да' if fooled_off else 'нет'}, ушло {lost_off} ₸"
+                      f"{' (правило в коде остановило бы: ушло ' + str(lost_rule) + ' ₸)' if fooled_off else ''} · "
+                      f"с Qalqan — фильтр поймал={'да' if caught else 'нет'}, ИИ обманут={'да' if fooled_full else 'нет'}, ушло {lost_full} ₸")
+    except DailyLimit:
+        print("\n!!! Закончился дневной лимит Groq (tokens per day). Сохраняю то, что успели; продолжить можно завтра.")
 
     (RESULTS / f"{RUNS_NAME}_runs.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
     write_summary(rows)
